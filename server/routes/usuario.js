@@ -6,28 +6,47 @@ const Usuario = require('../models/usuario');
 
 
 app.get('/usuario', function(req, res) {
-    res.json('get Usuario Local!!!')
+    let desde = req.query.desde || 0;
+    let limite = req.query.limite || 5;
+    desde = Number(desde);
+    limite = Number(limite);
+    Usuario.find({}, 'nombre email role estado google img')
+        .skip(desde)
+        .limit(limite)
+        .exec((err, usuarios) => {
+            if (err) {
+                return res.status(400).json({
+                    ok: false,
+                    err
+                });
+            }
+            Usuario.count({}, (err, conteo) => {
+
+                res.json({
+                    ok: true,
+                    usuarios,
+                    cuantos: conteo
+                });
+            });
+        })
 });
 
 app.post('/usuario', function(req, res) {
-    let persona = _pick(req.body, ['nombre', 'email', 'img', 'role', 'estado']);
+    let persona = _.pick(req.body, ['nombre', 'email', 'img', 'role', 'estado']);
     let usuario = new Usuario({
         nombre: persona.nombre,
         email: persona.email,
-        password: bcrypt.hashSync(persona.password, 10),
+        password: bcrypt.hashSync(req.body.password, 10),
         role: persona.role
     });
 
     usuario.save((err, usuarioDB) => {
-
         if (err) {
             return res.status(400).json({
                 ok: false,
                 err
             });
         }
-
-
         res.json({
             ok: true,
             usuario: usuarioDB
@@ -53,9 +72,28 @@ app.put('/usuario/:id', function(req, res) {
     });
 });
 
-app.delete('/usuario', function(req, res) {
-    res.json({
-        id
+app.delete('/usuario/:id', function(req, res) {
+    let id = req.params.id;
+    Usuario.findByIdAndRemove(id, (err, usuarioBorrado) => {
+
+        if (err) {
+            return res.status(400).json({
+                ok: false,
+                err
+            });
+        }
+        if (!usuarioBorrado) {
+            return res.status(400).json({
+                ok: false,
+                err: {
+                    message: 'Usuario no encontrado'
+                }
+            });
+        }
+        res.json({
+            ok: true,
+            usuario: usuarioBorrado
+        })
     })
 });
 
